@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ぺたメモ</title>
+<style>
+  :root{
+    --ink:#14171c;
+    --ink-soft:#232833;
+    --paper:#fbf8f0;
+    --paper-line:#e8e2d0;
+    --accent:#c98a3e;
+    --accent-soft:#e0b46f;
+    --teal:#4f9d94;
+    --text-on-ink:#e9e6dd;
+    --text-dim:#8b93a1;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+    overscroll-behavior:none;
+  }
+  body{
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+  }
+
+  header{
+    flex:0 0 auto;
+    padding:14px 16px 10px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:1px solid var(--ink-soft);
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  .brand-mark{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    display:inline-block;
+    transform:translateY(-1px);
+  }
+  h1{
+    font-size:15px;
+    font-weight:600;
+    color:var(--text-on-ink);
+    letter-spacing:.02em;
+    margin:0;
+  }
+  .count{
+    font-size:11px;
+    color:var(--text-dim);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.02em;
+  }
+
+  main{
+    flex:1 1 auto;
+    min-height:0;
+    padding:12px;
+  }
+  .paper-wrap{
+    height:100%;
+    background:var(--paper);
+    border-radius:10px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.35);
+    padding:2px;
+    position:relative;
+    overflow:hidden;
+  }
+  textarea{
+    width:100%;
+    height:100%;
+    resize:none;
+    border:none;
+    outline:none;
+    background:transparent;
+    color:#2b2a25;
+    font-family:"SF Mono","Menlo","Consolas",monospace;
+    font-size:15px;
+    line-height:1.65;
+    padding:16px 14px;
+    caret-color:var(--accent);
+  }
+  textarea::placeholder{
+    color:#a9a48f;
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  }
+
+  .clear-btn{
+    position:absolute;
+    top:10px;
+    right:10px;
+    width:28px;
+    height:28px;
+    border:none;
+    border-radius:50%;
+    background:rgba(43,42,37,.08);
+    color:#6b6655;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:background .15s ease, transform .08s ease, opacity .15s ease;
+  }
+  .clear-btn:hover{ background:rgba(43,42,37,.15); }
+  .clear-btn:active{ transform:scale(0.92); }
+  .clear-btn svg{ width:14px; height:14px; }
+  .clear-btn:disabled{ opacity:.3; pointer-events:none; }
+
+  footer{
+    flex:0 0 auto;
+    padding:10px 12px calc(12px + env(safe-area-inset-bottom));
+    display:flex;
+    gap:8px;
+  }
+  button{
+    flex:1;
+    border:none;
+    border-radius:10px;
+    padding:14px 8px;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.02em;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    cursor:pointer;
+    transition:transform .08s ease, opacity .15s ease;
+    color:var(--text-on-ink);
+  }
+  button:active{ transform:scale(0.96); }
+  button svg{ width:18px; height:18px; }
+
+  #btnPaste{ background:var(--ink-soft); }
+  #btnCopy{ background:var(--teal); color:#0c1a18; }
+  #btnUndo{ background:var(--ink-soft); }
+  button:disabled{ opacity:.35; pointer-events:none; }
+
+  #toast{
+    position:fixed;
+    left:50%;
+    bottom:96px;
+    transform:translateX(-50%) translateY(12px);
+    background:var(--accent);
+    color:#241505;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 16px;
+    border-radius:999px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+    white-space:nowrap;
+  }
+  #toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <h1>ぺたメモ</h1>
+  </div>
+  <span class="count" id="count">0文字</span>
+</header>
+
+<main>
+  <div class="paper-wrap">
+    <textarea id="area" placeholder="ここに入力・貼り付け…" autofocus spellcheck="false"></textarea>
+    <button id="btnClear" class="clear-btn" type="button" aria-label="消去">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+    </button>
+  </div>
+</main>
+
+<footer>
+  <button id="btnPaste" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/></svg>
+    貼り付け
+  </button>
+  <button id="btnCopy" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    コピー
+  </button>
+  <button id="btnUndo" type="button" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+    一つ戻る
+  </button>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  const area = document.getElementById('area');
+  const btnPaste = document.getElementById('btnPaste');
+  const btnCopy = document.getElementById('btnCopy');
+  const btnUndo = document.getElementById('btnUndo');
+  const btnClear = document.getElementById('btnClear');
+  const countEl = document.getElementById('count');
+  const toastEl = document.getElementById('toast');
+
+  const STORAGE_KEY = 'peta-memo-content';
+  const HISTORY_LIMIT = 100;
+  const CHECKPOINT_DELAY = 700; // ms of pause before a snapshot is taken
+
+  let history = [];       // undo stack of previous full-text states
+  let lastSnapshot = '';  // last value we checkpointed
+  let checkpointTimer = null;
+
+  // ---- load saved content ----
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved !== null) {
+      area.value = saved;
+      lastSnapshot = saved;
+    }
+  } catch (e) { /* localStorage unavailable */ }
+
+  updateCount();
+  // focus on open
+  window.addEventListener('load', () => area.focus());
+
+  function updateCount(){
+    countEl.textContent = area.value.length + '文字';
+  }
+
+  function saveToStorage(){
+    try { localStorage.setItem(STORAGE_KEY, area.value); } catch(e){}
+  }
+
+  function scheduleCheckpoint(){
+    if (checkpointTimer) clearTimeout(checkpointTimer);
+    checkpointTimer = setTimeout(() => {
+      if (area.value !== lastSnapshot) {
+        pushHistory(lastSnapshot);
+        lastSnapshot = area.value;
+      }
+    }, CHECKPOINT_DELAY);
+  }
+
+  function pushHistory(value){
+    history.push(value);
+    if (history.length > HISTORY_LIMIT) history.shift();
+    btnUndo.disabled = false;
+  }
+
+  // an immediate checkpoint (used before paste, so paste is a single undo step)
+  function checkpointNow(){
+    if (checkpointTimer) clearTimeout(checkpointTimer);
+    if (area.value !== lastSnapshot) {
+      pushHistory(lastSnapshot);
+      lastSnapshot = area.value;
+    }
+  }
+
+  area.addEventListener('input', () => {
+    updateCount();
+    saveToStorage();
+    scheduleCheckpoint();
+  });
+
+  btnUndo.addEventListener('click', () => {
+    if (checkpointTimer) clearTimeout(checkpointTimer);
+    if (history.length === 0) return;
+    const prev = history.pop();
+    area.value = prev;
+    lastSnapshot = prev;
+    updateCount();
+    saveToStorage();
+    if (history.length === 0) btnUndo.disabled = true;
+    area.focus();
+  });
+
+  btnPaste.addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) { showToast('クリップボードが空です'); return; }
+      checkpointNow(); // snapshot current state so this paste is one undo step
+      const start = area.selectionStart ?? area.value.length;
+      const end = area.selectionEnd ?? area.value.length;
+      const before = area.value.slice(0, start);
+      const after = area.value.slice(end);
+      area.value = before + text + after;
+      const caret = start + text.length;
+      area.setSelectionRange(caret, caret);
+      lastSnapshot = area.value;
+      updateCount();
+      saveToStorage();
+      area.focus();
+      showToast('貼り付けました');
+    } catch (e) {
+      showToast('貼り付けに失敗しました');
+    }
+  });
+
+  btnCopy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(area.value);
+      showToast('コピーしました');
+    } catch (e) {
+      // fallback for browsers without clipboard API permission
+      area.select();
+      document.execCommand('copy');
+      showToast('コピーしました');
+    }
+  });
+
+  btnClear.addEventListener('click', () => {
+    if (area.value === '') return;
+    checkpointNow(); // snapshot current content so it can be restored with 戻る
+    area.value = '';
+    lastSnapshot = '';
+    updateCount();
+    saveToStorage();
+    area.focus();
+    showToast('消去しました');
+  });
+
+  let toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1400);
+  }
+</script>
+
+</body>
+</html>
